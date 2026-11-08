@@ -1,0 +1,24 @@
+# The linters CI runs (golangci-lint v2): the standard set, and those that
+# catch what review would otherwise have to.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gocritic
+    - misspell
+    - nolintlint
+    - revive
+    - unconvert
+    - usestdlibvars
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/origincloudhq/external-dns-origincloud-webhook
