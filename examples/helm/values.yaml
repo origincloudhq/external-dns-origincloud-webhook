@@ -22,6 +22,11 @@ sources:
   - service
   - ingress
 
+# With `namespaced: true` (one namespace, a Role instead of a ClusterRole),
+# also set `extraArgs: [--service-type-filter=ClusterIP,LoadBalancer]`:
+# the chart then grants no access to Nodes, and external-dns waits for a
+# Node informer it can't fill unless NodePort services are filtered out.
+
 # The domains external-dns manages. Keep them the same as the webhook's
 # DOMAIN_FILTER.
 domainFilters:
@@ -32,7 +37,7 @@ provider:
   webhook:
     image:
       repository: ghcr.io/origincloudhq/external-dns-origincloud-webhook
-      tag: v0.1.0
+      tag: "0.1.1"
     env:
       - name: ORIGINCLOUD_PROJECT
         value: my-project-123

@@ -15,7 +15,7 @@ ghcr.io/origincloudhq/external-dns-origincloud-webhook
 ## Using it
 
 1. **A service account.** Create a service account in the project that holds
-   the zones, and grant it `roles/dns/editor` on the project: it manages
+   the zones, and grant it `roles/dns.editor` on the project: it manages
    record sets and reads zones, but can't create or delete a zone. Keep its
    client ID and secret.
 2. **A secret** holding them, in external-dns's namespace:
@@ -39,7 +39,7 @@ ghcr.io/origincloudhq/external-dns-origincloud-webhook
      webhook:
        image:
          repository: ghcr.io/origincloudhq/external-dns-origincloud-webhook
-         tag: v0.1.0
+         tag: "0.1.1"
        env:
          - name: ORIGINCLOUD_PROJECT
            value: my-project-123

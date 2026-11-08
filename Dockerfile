@@ -16,7 +16,9 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
 
 FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /out/webhook /webhook
-USER nonroot:nonroot
+# Numeric, so that a pod with runAsNonRoot can verify it (Kubernetes can't
+# check a user given by name): distroless's nonroot is 65532.
+USER 65532:65532
 # 8888: the webhook API, on localhost only by default. 8080: /healthz and
 # /readyz.
 EXPOSE 8888 8080
