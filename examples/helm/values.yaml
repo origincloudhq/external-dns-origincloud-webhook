@@ -3,9 +3,11 @@
 # external-dns's pod. external-dns calls it at http://localhost:8888; the
 # kubelet probes it on port 8080.
 #
-#   kubectl create secret generic origincloud-dns \
-#     --from-literal=client-id=<service account client id> \
-#     --from-literal=client-secret=<service account client secret>
+# The webhook acts as a WORKLOAD service account with roles/dns.editor on the
+# project, through a federated credential that trusts the cluster's issuer
+# for sub=system:serviceaccount:<namespace>:external-dns. No secret is stored
+# in the cluster.
+#
 #   helm upgrade --install external-dns external-dns \
 #     --repo https://kubernetes-sigs.github.io/external-dns/ \
 #     --values values.yaml
@@ -37,22 +39,20 @@ provider:
   webhook:
     image:
       repository: ghcr.io/origincloudhq/external-dns-origincloud-webhook
-      tag: "0.1.1"
+      tag: "0.2.0"
     env:
       - name: ORIGINCLOUD_PROJECT
         value: my-project-123
       - name: DOMAIN_FILTER
         value: example.com
-      - name: ORIGINCLOUD_CLIENT_ID
-        valueFrom:
-          secretKeyRef:
-            name: origincloud-dns
-            key: client-id
-      - name: ORIGINCLOUD_CLIENT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: origincloud-dns
-            key: client-secret
+      # The projected token below, exchanged at the security token service
+      # for the service account's access tokens, read again at each exchange.
+      - name: ORIGINCLOUD_OIDC_TOKEN_FILE
+        value: /var/run/secrets/origincloud/token
+    extraVolumeMounts:
+      - name: origincloud-token
+        mountPath: /var/run/secrets/origincloud
+        readOnly: true
     livenessProbe:
       httpGet:
         path: /healthz
@@ -67,3 +67,14 @@ provider:
         memory: 32Mi
       limits:
         memory: 128Mi
+
+# The cluster's token for external-dns's Kubernetes service account, issued
+# for the security token service and renewed by the kubelet before it expires.
+extraVolumes:
+  - name: origincloud-token
+    projected:
+      sources:
+        - serviceAccountToken:
+            audience: https://sts.origincloudapis.eu
+            expirationSeconds: 3600
+            path: token

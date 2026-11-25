@@ -63,6 +63,6 @@ EXTERNAL_DNS_LIVE_PROJECT=my-project-123 EXTERNAL_DNS_LIVE_DOMAIN=example.com \
   go test -run TestLive ./internal/webhook/
 ```
 
-It takes the credentials the SDK finds, such as `ORIGINCLOUD_CLIENT_ID` and
-`ORIGINCLOUD_CLIENT_SECRET` of a service account with `roles/dns/editor` on
-the project. The zone may be pending verification.
+It takes the credentials the SDK finds, such as the session of `origin id
+login`, or `ORIGINCLOUD_CREDENTIALS_FILE` naming a key of a service account
+with `roles/dns.editor` on the project. The zone may be pending verification.
