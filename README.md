@@ -14,18 +14,16 @@ ghcr.io/origincloudhq/external-dns-origincloud-webhook
 
 ## Using it
 
-1. **A service account.** Create a service account in the project that holds
-   the zones, and grant it `roles/dns.editor` on the project: it manages
-   record sets and reads zones, but can't create or delete a zone. Keep its
-   client ID and secret.
-2. **A secret** holding them, in external-dns's namespace:
-
-   ```sh
-   kubectl create secret generic origincloud-dns \
-     --from-literal=client-id=<client id> \
-     --from-literal=client-secret=<client secret>
-   ```
-
+1. **A service account.** Create a `WORKLOAD` service account, and grant it
+   `roles/dns.editor` on the project that holds the zones: it manages record
+   sets and reads zones, but can't create or delete a zone.
+2. **A federated credential** on it that trusts the cluster's service account
+   tokens for external-dns's Kubernetes service account: the cluster's issuer,
+   and the condition `sub=system:serviceaccount:<namespace>:external-dns`. The
+   webhook exchanges a projected token for the service account's access
+   tokens at the security token service, so no secret is stored in the
+   cluster. The issuer must serve its OIDC discovery document and keys over
+   HTTPS at a public address.
 3. **external-dns**, from its own Helm chart, with the webhook as its
    provider. [`examples/helm/values.yaml`](examples/helm/values.yaml) is a
    complete example; the part that matters:
@@ -39,18 +37,28 @@ ghcr.io/origincloudhq/external-dns-origincloud-webhook
      webhook:
        image:
          repository: ghcr.io/origincloudhq/external-dns-origincloud-webhook
-         tag: "0.1.1"
+         tag: "0.2.0"
        env:
          - name: ORIGINCLOUD_PROJECT
            value: my-project-123
          - name: DOMAIN_FILTER
            value: example.com
-         - name: ORIGINCLOUD_CLIENT_ID
-           valueFrom: {secretKeyRef: {name: origincloud-dns, key: client-id}}
-         - name: ORIGINCLOUD_CLIENT_SECRET
-           valueFrom: {secretKeyRef: {name: origincloud-dns, key: client-secret}}
+         - name: ORIGINCLOUD_OIDC_TOKEN_FILE
+           value: /var/run/secrets/origincloud/token
+       extraVolumeMounts:
+         - name: origincloud-token
+           mountPath: /var/run/secrets/origincloud
+           readOnly: true
        readinessProbe:
          httpGet: {path: /readyz, port: http-webhook}
+   extraVolumes:
+     - name: origincloud-token
+       projected:
+         sources:
+           - serviceAccountToken:
+               audience: https://sts.origincloudapis.eu
+               expirationSeconds: 3600
+               path: token
    ```
 
    ```sh
@@ -71,8 +79,9 @@ The webhook is configured from the environment.
 | Variable | Default | What it sets |
 |---|---|---|
 | `ORIGINCLOUD_PROJECT` | Required | The project whose hosted zones are managed: its id, or `projects/{project}`. |
-| `ORIGINCLOUD_CLIENT_ID`, `ORIGINCLOUD_CLIENT_SECRET` | | The service account's credential, exchanged for access tokens as they expire. |
-| `ORIGINCLOUD_ACCESS_TOKEN` | | An access token, sent as it is, instead of a service account's credential. It isn't renewed: for trying the webhook out. |
+| `ORIGINCLOUD_OIDC_TOKEN_FILE` | | The file holding the cluster's projected service account token, issued for the audience `https://sts.origincloudapis.eu`. It is read again at every exchange, so the kubelet's renewals are picked up. |
+| `ORIGINCLOUD_CREDENTIALS_FILE` | | A service account key's credentials file, instead of a projected token, for a cluster whose issuer the security token service can't reach. |
+| `ORIGINCLOUD_ACCESS_TOKEN` | | An access token, sent as it is. It isn't renewed: for trying the webhook out. |
 | `ORIGINCLOUD_ZONE_IDS` | Every zone | Comma-separated zone ids, or zones' resource names: only these zones are managed. |
 | `ORIGINCLOUD_ZONE_VISIBILITY` | Both | `public` or `private`: only zones of that visibility are managed. |
 | `DOMAIN_FILTER` | Every domain | Comma-separated domains: only these domains and the names below them are managed, as external-dns's `--domain-filter` takes them. |
@@ -136,9 +145,16 @@ other name of that zone.
   which external-dns retries, logs, and tries again at its next sync. Only a
   request the webhook can't decode is answered with a 4xx, which stops
   external-dns.
+- **Credentials.** The Go SDK reads them, in this order:
+  `ORIGINCLOUD_ACCESS_TOKEN`, `ORIGINCLOUD_CREDENTIALS_FILE`, then
+  `ORIGINCLOUD_OIDC_TOKEN_FILE`. Releases before 0.2.0 took a client ID and
+  secret, which service accounts no longer have.
 - **Health.** `/healthz` answers while the process serves. `/readyz` answers
   once the zones have been listed, which proves the credentials and the
-  project; until then, the webhook retries and logs why it can't.
+  project; until then, the webhook retries and logs why it can't. A token the
+  security token service refuses is answered `PERMISSION_DENIED` without a
+  reason: check the federated credential's issuer and `sub`, and the
+  projected token's audience.
 - **Shutdown.** On `SIGTERM` the webhook stops taking calls and lets the
   calls under way finish, for up to 20 seconds.
 - **Timeouts.** external-dns gives a call to the webhook 15 seconds by

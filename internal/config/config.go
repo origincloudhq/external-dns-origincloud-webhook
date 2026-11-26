@@ -1,8 +1,8 @@
 // Package config reads the webhook's configuration from the environment.
 //
-// The credentials aren't read here: the Go SDK takes them from
-// ORIGINCLOUD_CLIENT_ID and ORIGINCLOUD_CLIENT_SECRET, or
-// ORIGINCLOUD_ACCESS_TOKEN, itself.
+// The credentials aren't read here: the Go SDK takes them itself, from
+// ORIGINCLOUD_OIDC_TOKEN_FILE (a projected service account token),
+// ORIGINCLOUD_CREDENTIALS_FILE or ORIGINCLOUD_ACCESS_TOKEN.
 package config
 
 import (

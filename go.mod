@@ -3,7 +3,7 @@ module github.com/origincloudhq/external-dns-origincloud-webhook
 go 1.27.3
 
 require (
-	go.origincloud.eu/sdk v0.19.0
+	go.origincloud.eu/sdk v0.61.0
 	google.golang.org/protobuf v1.36.12
 	sigs.k8s.io/external-dns v0.24.0
 )
