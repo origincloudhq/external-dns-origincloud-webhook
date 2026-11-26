@@ -159,7 +159,7 @@ func (p *Provider) zoneChanges(ctx context.Context, zp *zonePlan) ([]change, err
 		case rs.GetAlias() != nil:
 			p.log.Warn("not deleting an alias", "zone", zp.zone.name, "recordSet", rs.GetName(), "dnsName", key.dnsName)
 		default:
-			changes = append(changes, change{dnsName: key.dnsName, recordType: key.recordType, deletion: rs.GetName()})
+			changes = append(changes, change{dnsName: key.dnsName, recordType: key.recordType, deletion: fullName(rs.GetName())})
 		}
 	}
 	writes := map[recordKey]*recordSet{}

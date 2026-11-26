@@ -122,7 +122,13 @@ func (d *DNS) BatchChangeRecordSets(_ context.Context, req *dnsv1beta1.BatchChan
 		return slices.IndexFunc(records, func(rs *dnsv1beta1.RecordSet) bool { return rs.GetName() == name })
 	}
 	named := map[string]bool{}
-	for _, name := range req.GetDeletions() {
+	for _, full := range req.GetDeletions() {
+		// A deletion references a record set, so it carries the full name, as
+		// the API requires; a relative one is refused there too.
+		name, ok := strings.CutPrefix(full, "//dns.origincloudapis.eu/")
+		if !ok {
+			return fmt.Errorf("BAD_REQUEST: invalid input on field deletions: must be a full resource name, //dns.origincloudapis.eu/{name}: %q is a relative resource name", full)
+		}
 		if named[name] {
 			return fmt.Errorf("BAD_REQUEST: %s is named twice", name)
 		}

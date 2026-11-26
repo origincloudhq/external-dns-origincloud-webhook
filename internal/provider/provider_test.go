@@ -283,6 +283,9 @@ func TestApplyChanges(t *testing.T) {
 	if len(d.Batches) != 2 {
 		t.Fatalf("%d batches, want 2", len(d.Batches))
 	}
+	if b := d.Batches[0]; len(b.GetDeletions()) == 1 && !strings.HasPrefix(b.GetDeletions()[0], "//dns.origincloudapis.eu/projects/") {
+		t.Errorf("deletion %q is not a full resource name", b.GetDeletions()[0])
+	}
 	if b := d.Batches[0]; b.GetParent() != zone || len(b.GetDeletions()) != 1 || len(b.GetUpdates()) != 2 || len(b.GetCreations()) != 2 {
 		t.Errorf("example.com's batch: %v", b)
 	}
