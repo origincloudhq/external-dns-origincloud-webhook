@@ -37,7 +37,7 @@ ghcr.io/origincloudhq/external-dns-origincloud-webhook
      webhook:
        image:
          repository: ghcr.io/origincloudhq/external-dns-origincloud-webhook
-         tag: "0.2.0"
+         tag: "0.2.1"
        env:
          - name: ORIGINCLOUD_PROJECT
            value: my-project-123
